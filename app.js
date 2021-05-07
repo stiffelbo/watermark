@@ -42,6 +42,54 @@ const prepareOutputFilename = (filename) => {
   const [name, ext] = filename.split('.');
   return name + '-with-watermark.' + ext;
 };
+//image manipulation functions
+const adjustBrightness = async function (inputFile, val){
+  try{
+    const image = await Jimp.read(inputFile);
+    val = parseFloat(val);
+    val = val < -1 ? -1 : val > 1 ? 1 : val;
+    await image.brightness( val );
+    await image.writeAsync(inputFile); 
+  }
+  catch(error){
+    error && console.log('Something went wrong... Try again!');
+  }
+}
+
+const adjustConstrast = async function (inputFile, val){
+  try{
+    const image = await Jimp.read(inputFile);
+    val = parseFloat(val);
+    val = val < -1 ? -1 : val > 1 ? 1 : val;
+    await image.contrast( val );
+    await image.writeAsync(inputFile); 
+  }
+  catch(error){
+    error && console.log('Something went wrong... Try again!');
+  }
+}
+
+const greyscale = async function (inputFile){
+  try{
+    const image = await Jimp.read(inputFile);    
+    await image.greyscale();
+    await image.writeAsync(inputFile); 
+  }
+  catch(error){
+    error && console.log('Something went wrong... Try again!');
+  }
+}
+
+const invert = async function (inputFile){
+  try{
+    const image = await Jimp.read(inputFile);    
+    await image.mirror(true, true);
+    await image.writeAsync(inputFile); 
+  }
+  catch(error){
+    error && console.log('Something went wrong... Try again!');
+  }
+}
 
 const startApp = async () => {
 
@@ -54,19 +102,71 @@ const startApp = async () => {
   // if answer is no, just quit the app
   if(!answer.start) process.exit();
 
-  // ask about input file and watermark type
-  const options = await inquirer.prompt([{
-    name: 'inputImage',
-    type: 'input',
-    message: 'What file do you want to mark?',
-    default: 'test.jpg',
-  }, {
+  // ask about input file
+    const options = await inquirer.prompt({
+      name: 'inputImage',
+      type: 'input',
+      message: 'What file do you want to mark?',
+      default: 'test.jpg',
+    });
+  // ask about changes in file
+  if(fs.existsSync('./img/' + options.inputImage)){
+    const file = './img/' + options.inputImage;
+    const changes = await inquirer.prompt([{
+      name: 'confirmChanges',      
+      message: 'Do yo want to edit file before apply watermark?',
+      type: 'confirm',
+    },
+    {
+      name: 'changeType',
+      type: 'list',
+      choices: ['adjust brightness', 'adjust contrast', 'make image b&w', 'invert image'],
+    }]);
+
+    if(changes.confirmChanges){
+      //apply changes acording to chosen option
+      switch(changes.changeType){
+        case 'adjust brightness':
+          {
+          const val = await inquirer.prompt([{
+            name: 'value',
+            type: 'input',
+            message: 'Type your value between -1 (max dark) and 1 ( max bright)',
+          }]);         
+          adjustBrightness(file, val.value) && console.log(`Changes: ${changes.changeType} applied!`);   
+          }       
+          break;          
+        case 'adjust contrast':
+          {
+          const val = await inquirer.prompt([{
+            name: 'value',
+            type: 'input',
+            message: 'Type your value between -1 (min) and 1 (max)',
+          }]);          
+          adjustConstrast(file, val.value) && console.log(`Changes: ${changes.changeType} applied!`);   
+          }       
+          break;          
+        case 'make image b&w':          
+          greyscale(file) && console.log(`Changes: ${changes.changeType} applied!`);          
+          break;          
+        case 'invert image':          
+          invert(file) && console.log(`Changes: ${changes.changeType} applied!`);          
+          break;          
+      }
+    }
+  }else{
+    console.log('Sorry! ');
+    console.log('Cant find: ', './img/' + options.inputImage);
+    startApp();
+  } 
+
+  const watermark = await inquirer.prompt({    
     name: 'watermarkType',
     type: 'list',
     choices: ['Text watermark', 'Image watermark'],
-  }]);
+  });
 
-  if(options.watermarkType === 'Text watermark') {
+  if(watermark.watermarkType === 'Text watermark') {
     const text = await inquirer.prompt([{
       name: 'value',
       type: 'input',
@@ -81,7 +181,6 @@ const startApp = async () => {
       console.log('Cant find: ', './img/' + options.inputImage);
       startApp();
     }
-    
   }
   else {
     const image = await inquirer.prompt([{
