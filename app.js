@@ -83,7 +83,7 @@ const greyscale = async function (inputFile){
 const invert = async function (inputFile){
   try{
     const image = await Jimp.read(inputFile);    
-    await image.mirror(true, true);
+    await image.invert();
     await image.writeAsync(inputFile); 
   }
   catch(error){
